@@ -112,8 +112,20 @@ def single_channel_Pgradient_gdriven(theta):
     """
     return rho*g*np.sin(theta * (np.pi/180.)) # [Pa/m]
 
+#%%
 # *****************************written as class
 
+import numpy as np # Numerical library
+from matplotlib import pyplot as plt # Plotting library
+import time
+
+# Global constants
+g = 9.8 # [m/s**2]
+rho = 1000 # [kg/m**3] density of water at 293K
+mu = 0.001 # [kg/m*s] dynamic viscosity of water at 293K
+
+def rain_fall():
+    
 class conduit_channel_dynamics(object):
   """
   single channel circular pipe flow

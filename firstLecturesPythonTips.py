@@ -209,5 +209,19 @@ print a * a
   # pyton indexes at 0 so have to add one to start at 1
   # np.arange (0,5) = np.array ([0,1,2,3,4])
 #%%
-from matplotlib import pyplot as plt # Plotting library
-import time
+Assignment 2 = data importing and processing
+assignment 3 = numerical model and finite diff tech for solving diff eqs
+    usually defined by the data but uses physics, chem, predictability
+Assignment 4 = final project
+#%%
+GIT hub = share code/work in teams
+    fork = create your own copy of someone's repository
+    pull request = request owner of a code to incorporate your edits
+#%%
+PIP = kindof like an app store for python
+must be typed into command console... hit windows and type cmd
+pip install module_name
+or
+pip uninstall module_name
+ex:
+pip install landlab
