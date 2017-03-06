@@ -12,3 +12,9 @@ Created on Wed Mar 01 16:12:18 2017
 # RegEx is good for searching through huge databases
 
 # binary is good to use to input into GIS for raster sets
+
+import ulmo # is a hydrology library
+
+
+http://matplotlib.org/users/tutorials.html
+# great site for matplotlib help and tutorials
