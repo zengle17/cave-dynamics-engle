@@ -4,6 +4,21 @@ Created on Wed Mar 01 16:12:18 2017
 
 @author: Zach
 """
+# documenting data
+the 
+"""
+This is my function
+"""
+thing then tells what your function does later for help by 
+help(function_name)
+
+===== gives a line header
+*** writes text in bold ***
+* bullet points
+``` starts a section of what looks like code written out
+
+markdown cheat sheet also has everything else you can do
+
 # kml and shapfiles are both vector layer files
 # google earth uses kml
 # can go to google earth - draw vectors - and download data as kml and use
@@ -52,3 +67,7 @@ standard names are set for specific variables... reproducable and shareable
 Panoply is what you install online as a NetCDF viewer    
 
 cartopy is a cartography library for python
+
+
+DATA project
+map cave jpgs of maps.... convert them to raster
