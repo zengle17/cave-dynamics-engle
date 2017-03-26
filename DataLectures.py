@@ -32,6 +32,7 @@ import ulmo # is a hydrology library
 
 
 http://matplotlib.org/users/tutorials.html
+http://matplotlib.org/users/pyplot_tutorial.html
 # great site for matplotlib help and tutorials
 
 raspberry pi board = an awesome small linux computer chip $20
@@ -67,6 +68,11 @@ standard names are set for specific variables... reproducable and shareable
 Panoply is what you install online as a NetCDF viewer    
 
 cartopy is a cartography library for python
+using cartopy tips
+http://scitools.org.uk/cartopy/docs/v0.15/matplotlib/intro.html
+
+markdown allows you to make nice word/pdfs of code script
+https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
 
 
 DATA project
