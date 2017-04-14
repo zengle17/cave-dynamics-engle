@@ -5,55 +5,79 @@ Created on Mon Mar 20 12:24:14 2017
 @author: Zach
 """
 
-from osgeo import gdal
+from osgeo import gdal, osr, ogr
 from matplotlib import pyplot as plt
 import numpy as np
+import sys
 
 # goals:
 # process .jpg .tif .png and so on images of old cave maps into GIS spatial raster frame
-# overlay a vector path of the cave tunnels on that map
-# overlay a google earth image of that cave location over so you can see the tunnels and entrances on the surface
+# set up a .wkt file associated with the geotiff to be able to put vector polygons on the map
 
-ds = gdal.Open('C:/Users/Zach/Documents/College/Superman Spring/comp methods in geo/cave-dynamics-engle/cavemaps/J4cavePA.jpg')
-# this is an old drawing of the map from 1970... note the tilted north arrow
-# cave enterance found at these google map/earth coordinates 40.861626, -77.744863
+# to not print gdal error messages
+gdal.UseExceptions()
 
+# laptop source_image = 'C:/Users/Zach/Documents/College/Superman Spring/comp methods in geo/cave-dynamics-engle/cavemaps/J4cavePA.jpg'
+source_image = 'E:/College/Superman Spring/comp methods in geo/cave-dynamics-engle/cavemaps/J4cavePA.jpg'
+# laptop destination_image = 'C:/Users/Zach/Documents/College/Superman Spring/comp methods in geo/cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
+destination_image = 'E:/College/Superman Spring/comp methods in geo/cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
 
+# http://nodivisions.com/excursions/j4/j4_cave_map_new.jpg
+# 10044 x 4944 resolution... 10044 pixels wide, 4944 pixels tall... pixel coords found w GIMP
+# jpg compress image blocks (this image changed 2x2pixel to a 1x1 pixel block during compression)
+# tif files do not compress at all
+# this J4 Cave image is a scanned old drawing of the map from 1970... note the tilted north arrow
+# cave enterance found at these google map/earth coordinates 40.861678, -77.744858 (pixel coord 7056 x 549)
+# upper left corner of jpg image (pixel 0x0) is roughly at 40.860020, -77.747383 estimated w google earth
+# bottom right corner of jpg image (pixel coord 10044 x 4944)
 
+# open source dataset
+src_ds = gdal.Open(source_image)
+format = "GTiff"
+driver = gdal.GetDriverByName(format)
 
+# open destination dataset
+dst_ds = driver.CreateCopy(destination_image, src_ds, 0)
 
+# Specify raster location through geotransform array
+# (uperleftx, scalex, skewx, uperlefty, skewy, scaley)
+# Scale = size of one pixel in units of raster projection
+# based on the scale, I assume a pixel is 1x1 meter
+gt = [-7774738, 1, 0, 4086002, 0, -1]
 
-# Try typing "ds." (without the quotes) and then two tabs in iPython. Look at 
-# how much extra information is packaged with this GeoTIFF!
-# Try these:
-ds.GetProjectionRef()
-ds.GetGeoTransform()
+# Set location georeference (give pixel coords a geospatial coord)
+dst_ds.SetGeoTransform(gt)
 
-band = ds.GetRasterBand(1) # only one band -- elevation
-elevation = band.ReadAsArray() # So read it as a numpy array.
+# Get raster projection epsg code http://spatialreference.org/ref/epsg/?search=pennsylvania&srtext=Search
+epsg = 3651 # epsg 3651 code refers to NAD83(NSRS2007) / Pennsylvania South 
+srs = osr.SpatialReference()
+srs.ImportFromEPSG(epsg)
+dest_wkt = srs.ExportToWkt()
 
-# OK -- let's plot it!
-plt.imshow(elevation)
-plt.colorbar()
-plt.title('Berlin and surrounding Brandenburg')
-plt.show()
+# Set projection for the output georeferenced tif (destination dataset)
+dst_ds.SetProjection(dest_wkt)
 
-# All right, now let's plot the proper coordinate system.
-loc = ds.GetGeoTransform()
-x = np.linspace(loc[0], \
-                loc[0] + loc[1]*elevation.shape[1], \
-                elevation.shape[1])
-y = np.linspace(loc[3] + loc[5]*elevation.shape[0], \
-                loc[3], \
-                elevation.shape[0])
+# Close files into designated folders
+dst_ds = None
+src_ds = None
+# by this point there should now be a created geotiff file in the destination folder
 
-# Now plot
-plt.imshow(elevation, extent=[x.min(), x.max(), y.min(), y.max()])
-cbar = plt.colorbar() # Instantiate a class so I can modify its characteristics
-cbar.set_label('Elevation [m]', fontsize=16, fontweight='bold')
-plt.xlabel('Longitude E', fontsize=16, fontweight='bold')
-plt.ylabel('Latitude N', fontsize=16, fontweight='bold')
-plt.title('Berlin and surrounding Brandenburg\nSRTM 1-arcsecond data', \
-           fontsize=20)
-plt.tight_layout()
-plt.show()
+# call the jpg that was georeferenced into a geotiff
+geo_image = 'E:/College/Superman Spring/comp methods in geo/cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
+dsgeo = gdal.Open(geo_image)
+
+# see how there is now geospatial information associated to this geotiff
+print dsgeo.ReadAsArray()
+print dsgeo.GetMetadata()
+print dsgeo.GetProjectionRef()
+print dsgeo.GetGeoTransform()
+
+# set up geotiff with a wkt file that can be used as a vector to polygonize the spatial map
+data = dsgeo.ReadAsArray()
+gt = dsgeo.GetGeoTransform()
+proj = dsgeo.GetProjectionRef()
+
+inproj = osr.SpatialReference()
+inproj.ImportFromWkt(proj)
+
+print(inproj)
