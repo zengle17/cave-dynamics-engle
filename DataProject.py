@@ -17,10 +17,8 @@ import sys
 # to not print gdal error messages
 gdal.UseExceptions()
 
-# laptop source_image = 'C:/Users/Zach/Documents/College/Superman Spring/comp methods in geo/cave-dynamics-engle/cavemaps/J4cavePA.jpg'
-source_image = 'E:/College/Superman Spring/comp methods in geo/cave-dynamics-engle/cavemaps/J4cavePA.jpg'
-# laptop destination_image = 'C:/Users/Zach/Documents/College/Superman Spring/comp methods in geo/cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
-destination_image = 'E:/College/Superman Spring/comp methods in geo/cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
+source_image = '../cave-dynamics-engle/cavemaps/J4cavePA.jpg'
+destination_image = '../cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
 
 # http://nodivisions.com/excursions/j4/j4_cave_map_new.jpg
 # 10044 x 4944 resolution... 10044 pixels wide, 4944 pixels tall... pixel coords found w GIMP
