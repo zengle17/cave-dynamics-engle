@@ -61,7 +61,7 @@ src_ds = None
 # by this point there should now be a created geotiff file in the destination folder
 
 # call the jpg that was georeferenced into a geotiff
-geo_image = 'E:/College/Superman Spring/comp methods in geo/cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
+geo_image = '../cave-dynamics-engle/geocavemaps/geoJ4cavePA.tif'
 dsgeo = gdal.Open(geo_image)
 
 # see how there is now geospatial information associated to this geotiff
