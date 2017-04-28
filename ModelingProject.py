@@ -6,6 +6,8 @@ Created on Sat Apr 22 10:20:25 2017
 """
 
 import numpy as np
+import random
+import time
 from scipy.sparse import spdiags, identity
 from scipy.sparse.linalg import spsolve, isolve
 from landlab import RasterModelGrid
@@ -26,60 +28,92 @@ from matplotlib import pyplot as plt
 ######## use the above to find out how much [Ca] is going to form to be fluxed into the system #########
 
 # inputs
-pco2 = .01 # [mol/L]  # ~400ppm in rainwater = 400mg/L = .4g/L * mol/44g =...
-ch2o = 55.5 # [mol/L] # assume other 999,600ppm is H2O = 999g/L * mol/18g =...
-r = .039 # [reactions/sec] for co2+h20 to carbonic acid
-tfall = 200 # [sec] how long it takes for a raindrop to hit ground
-K = 1.7E-3 # K equilibrium for H2CO3/CO2
-lrain = 1 # [L] when rain falls on a 1mx1m patch of limestone for a brief dt
+ipco2 = 0.4*44 # [mol/L] # initial ~400ppm in atmosphere = 400mg/L = .4g/L * mol/44g =...
+ich2o = 999*18 # [mol/L] # assume other 999,600ppm is H2O = 999g/L * mol/18g =...
+r = .039 # [mol/Lsec] reaction rate for co2+h20 to carbonic acid
+tfall = 200 # [sec] how long it takes for raindrop to hit limestone ground in the midwest
 
-cacid = K * pco2 # [C carbonic acid]
-macid = cacid * lrain # [mol carbonic acid in __ liters of rain]
-
-
-# this rain will come down onto a pure sheet of CaCO3... so Ca ion concentration is zero
-# dependent (vertical axis) will be concentration of Ca ion... telling how much dissolution happened
+chco3 = r*tfall #[mol/L] # assume reactions to carbonic acid start happening after raindrop forms and starts falling through the co2 atmosphere
+opco2 = ipco2 - (chco3 / 2) #[mol/L] # final co2 concentration in rain after some has been used up in the reaction
+och2o = ich2o - (chco3 / 2) #[mol/L] # final h2o concentration in rain after some has been used up in the reaction
 
 # Time
 dt = 1 # [s]
 Tend = 3000 # [s] ~30minutes of rainfall
 
-# Grid of [Ca2+] concentration
-Cstart = np.zeros(1000) # there is zero concentration of Ca ions at the start
+raindt = 1 # [L/s] what vol of rain falls on a 1mx1m patch of limestone for a brief dt?
+
+macid = chco3 * raindt * Tend # [total mol carbonic acid released onto the limestone over the entire rainfall]
+
+# this rain will come down onto a pure sheet of CaCO3... so Ca ion concentration is zero
+# dependent (vertical axis) will be mol of Ca ion... telling how much dissolution happened
+# for each mol of acid added to the the limestone there will be 1 mol of Ca ions created
+
+# Grid of [Ca2+] spatial distributed concentration
+Cstart = np.zeros(100) # there is zero concentration of Ca ions at the start
 C = Cstart.copy()
-C[100] = 2 # this is the zone of the 50th grid on the 100grid array, where it is raining... the carbonic acid will react to form Ca ions
-C[700] = 2
-dx = 0.01 # [m]
-x = np.arange(0, len(Cstart)*dx, dx)
+# set multiple places where it will rain water plus some carbonic acid
+C[random.randint(1, 99)] = macid #randomly rains here
+C[random.randint(1, 99)] = macid #randomly rains here
+C[random.randint(1, 99)] = macid #randomly rains here
+C[random.randint(1, 99)] = macid #randomly rains here
+dx = 0.001 # [m]
+x = np.arange(0, len(Cstart)*dx, dx) # so grid length (x length) is 0m to length of Cstart(100zero nodes)*.001m dx interval = 0.1m long x axis
 
-# Parameters
-D = 1E-9 # molecular diffusion coefficient [mL/molsec]
+# parameters
+D = 1E-9 # molecular diffusion coefficient [mL/molsec] estimated from literature
 
-# Boundary conditions -- Dirichlet
+# getting the boundary conditions into the C concentration grid
 bcl = np.array([0]) # 0 Ca ions... only pure caco3
 bcr = np.array([0]) # 0 Ca ions... only pure caco3
-
-# Put boundary conditions into the RHS "a" array
 a = np.hstack(( bcl, np.zeros(len(C)-2), bcr ))
 
-# Build tridiagonal matrix
-left =   np.ones(len(C)) # If these weren't all the same value, would have
-                         # to use np.roll() to arrange in proper order due
-                         # to values being outside of matrix
+# set up tridiagonal matrix
+left =   np.ones(len(C))
 center = -2 * np.ones(len(C))
 right =   np.ones(len(C))
 
-diagonals = (kappa * dt / dx**2) * np.vstack((left, center, right))
+diagonals = (D * dt / dx**2) * np.vstack((left, center, right))
 offsets = np.array([-1, 0, 1])
 
-# Build it as a sparse matrix to save on memory
-# Very important if you are building a big system!
 A = spdiags(diagonals, offsets, len(C), len(C), format='csr')
 AI = A + identity(A.shape[0])
 
-# Solve as a forward difference
-for i in range(int(np.floor(Tend/dt))):
+
+plt.ion()
+fig = plt.figure()
+plt.title('Acid Rain Limestone Dissolution Profile', fontsize=20, weight='bold')
+plt.xlabel('Distance across limestone slab [m]', fontsize=16)
+plt.ylim((0,np.max(C)*1.1))
+plt.ylabel('Concentration of aqueous Ca2+ ions [m]', fontsize=16)
+fig.canvas.draw()
+
+plt.plot(x, C, 'b-', linewidth=4) # initial spatial concentration
+
+# Solve concentration through molecular diffision as a forward difference
+t_plot = 0
+dt_plot = 500 # graphically show evolution in 500sec intervals until Tend
+for t in range(int(np.floor(Tend/dt))):
   C = AI*C + (D * dt / dx**2)*a
 
-# Plot
-plt.plot(x, C); plt.show()
+# graphically show the iterations and diffusion process
+  if t >= t_plot:
+    t_plot += dt_plot # add dt_plot value 500 to current standing t_plot value
+    print t
+    plt.plot(x,C,'g-',linewidth=1)
+    plt.xlim((x[0],x[-1]))
+    fig.canvas.draw()
+    time.sleep(0.7)
+  
+# spatial concentration after molecular diffusion has spread Ca ions out
+plt.plot(x, C, 'r-', linewidth=4)
+plt.plot(x, C, 'k-', linewidth=1)
+
+# FINALIZE -- SHOW THE PLOT
+
+plt.show()
+
+
+
+# show pH values at the time iteration intervals 
+# figure out how to make Cstart location continue... continuous input of rain for x seconds
