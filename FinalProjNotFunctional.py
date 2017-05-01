@@ -10,13 +10,13 @@ import numpy as np
 from scipy.sparse import spdiags, identity
 from scipy.sparse.linalg import spsolve, isolve
 from matplotlib import pyplot as plt
+#from __future__ import print_function
 from landlab import RasterModelGrid as rmg
 from landlab import load_params
+from Ecohyd_functions_flat import (Initialize_, Empty_arrays,
+                                   Save_, Plot_)
 from landlab.plot.imshow import imshow_grid_at_node
 from landlab.plot import imshow_grid
-from landlab.plot import channel_profile as prf
-from landlab.components.uniform_precip import PrecipitationDistribution
-from matplotlib.pyplot import loglog
 import matplotlib as mpl
 
 #construct a 2D numerical model on a raster grid
@@ -25,6 +25,84 @@ import matplotlib as mpl
 #evolves from downhole vertical movement of aqueous carbonate rock and hole radially widens
 #downhole vert movement and hole widening proportional water input (w carbonic acid) * transport coefficient
 #should make a 3d conical shape
+
+
+##### set up grid to make rain randomly fall ########################################
+grid1 = rmg((100, 100), spacing=(5., 5.)) #master grid
+grid = rmg((5, 4), spacing=(5., 5.)) 
+
+#load storm parameters
+InputFile = 'FinalProjStormParameters.txt'
+data = load_params(InputFile)
+
+PD_D, PD_W = Initialize_(
+            data, grid, grid1)
+
+
+n_years = 600      # Approx number of years for model to run
+# Calculate approximate number of storms per year
+fraction_wet = (data['doy__end_of_monsoon']-data['doy__start_of_monsoon'])/365.
+fraction_dry = 1 - fraction_wet
+no_of_storms_wet = (8760 * (fraction_wet)/(data['mean_interstorm_wet'] +
+                    data['mean_storm_wet']))
+no_of_storms_dry = (8760 * (fraction_dry)/(data['mean_interstorm_dry'] +
+                    data['mean_storm_dry']))
+n = int(n_years * (no_of_storms_wet + no_of_storms_dry)) # total number of storms through years of model
+
+                
+# # Represent current time in years
+current_time = 0            # Start from first day of Jan
+
+# Keep track of run time for simulation - optional
+Start_time = time.clock()     # Recording time taken for simulation
+
+# declaring few variables that will be used in the storm loop
+time_check = 0.     # Buffer to store current_time at previous storm
+yrs = 0             # Keep track of number of years passed
+WS = 0.             # Buffer for Water Stress
+Tg = 270        # Growing season in days
+
+
+# # Run storm Loop
+for i in range(0, n):
+    # Update objects
+
+    # Calculate Day of Year (DOY)
+    Julian = np.int(np.floor((current_time - np.floor(current_time)) * 365.))
+
+    # Generate seasonal storms
+    # for Dry season
+    if Julian < data['doy__start_of_monsoon'] or Julian > data[
+                        'doy__end_of_monsoon']:
+        PD_D.update()
+        P[i] = PD_D.storm_depth
+        Tr[i] = PD_D.storm_duration
+        Tb[i] = PD_D.interstorm_duration
+    # Wet Season - Jul to Sep - NA Monsoon
+    else:
+        PD_W.update()
+        P[i] = PD_W.storm_depth
+        Tr[i] = PD_W.storm_duration
+        Tb[i] = PD_W.interstorm_duration
+
+    # Assign spatial rainfall data
+    grid['cell']['rainfall__daily_depth'] = P[i] * np.ones(grid.number_of_cells)
+
+    # Record time (optional)
+    Time[i] = current_time
+
+    # Update spatial PFTs with Cellular Automata rules
+    if (current_time - time_check) >= 1.:
+        if yrs % 100 == 0:
+            print('Elapsed time = {time} years'.format(time=yrs))
+        yrs += 1
+
+Plot_(grid1, P, yrs, yr_step=100)
+
+
+
+###################### construct sinkhole evolution in the spots that it rains ###################
+
 
 mg = rmg((40, 40), 1.0) #master grid with 40 rows, 40 columns, grid spacing of 1m
 
@@ -102,5 +180,6 @@ xlabel('horizontal distance (m)')
 ylim(-2, 2)
 ylabel('vertical distance (m)')
 title('Topography cross section')
+
 
 
