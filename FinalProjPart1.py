@@ -10,13 +10,11 @@ import numpy as np
 from scipy.sparse import spdiags, identity
 from scipy.sparse.linalg import spsolve, isolve
 from matplotlib import pyplot as plt
-#from __future__ import print_function
-from landlab import RasterModelGrid as rmg
+from landlab import RasterModelGrid
 from landlab import load_params
-from Ecohyd_functions_flat import (Initialize_, Empty_arrays,
-                                   Save_, Plot_)
 from landlab.plot.imshow import imshow_grid_at_node
 from landlab.plot import imshow_grid
+from landlab.components import OverlandFlow
 import matplotlib as mpl
 
 #construct a 2D numerical model on a raster grid
@@ -27,84 +25,49 @@ import matplotlib as mpl
 #should make a 3d conical shape
 
 
-##### set up grid to make rain randomly fall ########################################
-grid1 = rmg((100, 100), spacing=(5., 5.)) #master grid
-grid = rmg((5, 4), spacing=(5., 5.)) 
+########## set up grid to stimulate rainstorms over the years ########################################
 
-#load storm parameters
-InputFile = 'FinalProjStormParameters.txt'
-data = load_params(InputFile)
+# set up a grid with resolution dx, elevation topography can start out as a flat slab of CaCO3
+dx = 1.0
+rmg = RasterModelGrid((40, 40), dx) 
+#z = 160    
+z = rmg.add_ones('node', 'Plan view topography')    
+rmg['node']['topographic__elevation'] = z
 
-PD_D, PD_W = Initialize_(
-            data, grid, grid1)
+# set Neumann boundary condition of constant gradient
+rmg.set_nodata_nodes_to_fixed_gradient(z, 1) # 1 [m**3 / sec]
 
+# set the OverlandFlow parameters for the rmg grid
+of = OverlandFlow(rmg, mannings_n=0.03, steep_slopes=True)
 
-n_years = 600      # Approx number of years for model to run
-# Calculate approximate number of storms per year
-fraction_wet = (data['doy__end_of_monsoon']-data['doy__start_of_monsoon'])/365.
-fraction_dry = 1 - fraction_wet
-no_of_storms_wet = (8760 * (fraction_wet)/(data['mean_interstorm_wet'] +
-                    data['mean_storm_wet']))
-no_of_storms_dry = (8760 * (fraction_dry)/(data['mean_interstorm_dry'] +
-                    data['mean_storm_dry']))
-n = int(n_years * (no_of_storms_wet + no_of_storms_dry)) # total number of storms through years of model
+elapsed_time = 0
+model_run_time = 3000
 
-                
-# # Represent current time in years
-current_time = 0            # Start from first day of Jan
+storm_duration = 500
+rainfall_mmhr = 5
 
-# Keep track of run time for simulation - optional
-Start_time = time.clock()     # Recording time taken for simulation
+# set the loop for the rainfall over the total elapsed time
+while elapsed_time < model_run_time:
 
-# declaring few variables that will be used in the storm loop
-time_check = 0.     # Buffer to store current_time at previous storm
-yrs = 0             # Keep track of number of years passed
-WS = 0.             # Buffer for Water Stress
-Tg = 270        # Growing season in days
+    of.dt = of.calc_time_step()
 
-
-# # Run storm Loop
-for i in range(0, n):
-    # Update objects
-
-    # Calculate Day of Year (DOY)
-    Julian = np.int(np.floor((current_time - np.floor(current_time)) * 365.))
-
-    # Generate seasonal storms
-    # for Dry season
-    if Julian < data['doy__start_of_monsoon'] or Julian > data[
-                        'doy__end_of_monsoon']:
-        PD_D.update()
-        P[i] = PD_D.storm_depth
-        Tr[i] = PD_D.storm_duration
-        Tb[i] = PD_D.interstorm_duration
-    # Wet Season - Jul to Sep - NA Monsoon
+    if elapsed_time < (storm_duration):
+        of.rainfall_intensity =  rainfall_mmhr * (0.000001)
     else:
-        PD_W.update()
-        P[i] = PD_W.storm_depth
-        Tr[i] = PD_W.storm_duration
-        Tb[i] = PD_W.interstorm_duration
+        of.rainfall_intensity = 0
 
-    # Assign spatial rainfall data
-    grid['cell']['rainfall__daily_depth'] = P[i] * np.ones(grid.number_of_cells)
+    of.overland_flow()
 
-    # Record time (optional)
-    Time[i] = current_time
+    elapsed_time += of.dt
 
-    # Update spatial PFTs with Cellular Automata rules
-    if (current_time - time_check) >= 1.:
-        if yrs % 100 == 0:
-            print('Elapsed time = {time} years'.format(time=yrs))
-        yrs += 1
-
-Plot_(grid1, P, yrs, yr_step=100)
+# show the grid that has depth of water after rainfall events
+imshow_grid(rmg, 'surface_water__depth', plot_name='Water depth across grid after rainfall',
+        var_name='Water Depth', var_units='m', grid_units=('m', 'm'), cmap='Blues')
 
 
+######## model the sinkhole development in plan view and cross section ##################################
 
-###################### construct sinkhole evolution in the spots that it rains ###################
-
-
-mg = rmg((40, 40), 1.0) #master grid with 40 rows, 40 columns, grid spacing of 1m
+mg = RasterModelGrid((40, 40), 1.0) #master grid with 40 rows, 40 columns, grid spacing of 1m
 
 z = mg.add_zeros('node', 'Plan view topography') #call function add zeros
 
@@ -145,15 +108,16 @@ dt = 10 # years
 qs = mg.add_zeros('link', 'sediment_flux')
 
 t_plot = 0
-dt_plot = 2.5 # graphically show evolution in 25year intervals until end
+dt_plot = 10 # graphically show evolution
 
-for i in range(25): #25 iterationsxdt of 10 is 250years
+for i in range(30): #30 iterations
     g = mg.calc_grad_at_link(z)
     qs[mg.active_links] = D * g[mg.active_links]
     dqsdx = mg.calc_flux_div_at_node(qs)
     dzdt = -dqsdx
     z[mg.core_nodes] -= dzdt[mg.core_nodes] * dt 
     #want sinkhole nodes to sink down dz amt per dt passed
+    # show how sinkhole develops
     if i >= t_plot:
         t_plot += dt_plot # add dt_plot value 500 to current standing t_plot value
         print 'sinkhole after', i*dt, 'years have passed'
@@ -168,9 +132,11 @@ for i in range(25): #25 iterationsxdt of 10 is 250years
         title('Topography cross section')
         time.sleep(0.5)
 
+# final figure of the sinkhole after all model time has passed
 figure(1)
 im = imshow_grid_at_node(mg, 'Plan view topography', grid_units = ['m','m'], var_name='Elevation (m)')
 
+#show a cross section of sinkhole
 figure(2)
 elev_rast = mg.node_vector_to_raster(z)
 ycoord_rast = mg.node_vector_to_raster(mg.node_y)
@@ -180,6 +146,4 @@ xlabel('horizontal distance (m)')
 ylim(-2, 2)
 ylabel('vertical distance (m)')
 title('Topography cross section')
-
-
 

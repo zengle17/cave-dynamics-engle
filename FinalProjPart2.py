@@ -26,6 +26,8 @@ import matplotlib as mpl
 #downhole vert movement and hole widening proportional water input (w carbonic acid) * transport coefficient
 #should make a 3d conical shape
 
+######## model the sinkhole development in plan view and cross section ##################################
+
 mg = rmg((40, 40), 1.0) #master grid with 40 rows, 40 columns, grid spacing of 1m
 
 z = mg.add_zeros('node', 'Plan view topography') #call function add zeros
@@ -76,6 +78,7 @@ for i in range(25): #25 iterationsxdt of 10 is 250years
     dzdt = -dqsdx
     z[mg.core_nodes] -= dzdt[mg.core_nodes] * dt 
     #want sinkhole nodes to sink down dz amt per dt passed
+    # show how sinkhole develops
     if i >= t_plot:
         t_plot += dt_plot # add dt_plot value 500 to current standing t_plot value
         print 'sinkhole after', i*dt, 'years have passed'
@@ -90,9 +93,11 @@ for i in range(25): #25 iterationsxdt of 10 is 250years
         title('Topography cross section')
         time.sleep(0.5)
 
+# final figure of the sinkhole after all model time has passed
 figure(1)
 im = imshow_grid_at_node(mg, 'Plan view topography', grid_units = ['m','m'], var_name='Elevation (m)')
 
+#show a cross section of sinkhole
 figure(2)
 elev_rast = mg.node_vector_to_raster(z)
 ycoord_rast = mg.node_vector_to_raster(mg.node_y)
