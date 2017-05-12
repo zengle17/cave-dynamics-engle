@@ -42,7 +42,7 @@ Tend = 3000 # [s] ~30minutes of rainfall
 raindt = 0.1 # [L/s] what vol of rain falls on a dx patch of limestone for a brief dt?
 
 macid = chco3 * raindt # [total mol H acid released onto the limestone over the entire rainfall]
-ph = (math.log10((10**(-7.8)) * (opco2)**(1/2)))*-1 # final estimated pH of system with limestone buffer
+ph = (np.log10((10**(-7.8)) * (opco2)**(1/2)))*-1 # final estimated pH of system with limestone buffer
 
 # this rain will come down onto a pure sheet of CaCO3... so Ca ion concentration is zero
 # dependent (vertical axis) will be mol of Ca ion... telling how much dissolution happened
